@@ -26,6 +26,7 @@ class TransactionCardSheets extends StatefulWidget {
     required this.onDelete,
     required this.undoDelete,
     required this.scaffoldContext,
+    required this.onEdit,
   });
 
   @override

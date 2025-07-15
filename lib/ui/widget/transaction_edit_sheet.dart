@@ -36,42 +36,53 @@ class TransactionEditSheet extends StatefulWidget {
 }
 
 class _TransactionEditSheetState extends State<TransactionEditSheet> {
-  String? title;
-  String? amount;
-  DateTime? date;
-
   final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _titleController;
+  late final TextEditingController _amountController;
+  late DateTime _selectedDate;
 
   @override
   void initState() {
     super.initState();
-    title = widget.transaction.title;
-    amount = widget.transaction.amount.toStringAsFixed(2);
-    date = widget.transaction.date;
+    _titleController = TextEditingController(text: widget.transaction.title);
+    _amountController = TextEditingController(
+        text: widget.transaction.amount.toStringAsFixed(2));
+    _selectedDate = widget.transaction.date;
   }
 
-  void _finalizar() {
-    if (_formKey.currentState?.validate() ?? false) {
-      final nova = widget.transaction.copyWith(
-        title: title!.trim(),
-        amount: double.parse(amount!),
-        date: date!,
-      );
-
-      widget.onSubmit.execute(nova);
-      Navigator.pop(context);
-    }
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _amountController.dispose();
+    super.dispose();
   }
 
-  void _abrirCalendario() async {
-    final selecionada = await showDatePicker(
+  void _handlePickDate() async {
+    final picked = await showDatePicker(
       context: context,
-      initialDate: date!,
+      initialDate: _selectedDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (selecionada != null) {
-      setState(() => date = selecionada);
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
+  void _handleCancel() {
+    Navigator.of(context).pop();
+  }
+
+  void _handleSubmit() {
+    if (_formKey.currentState?.validate() ?? false) {
+      final updated = widget.transaction.copyWith(
+        title: _titleController.text,
+        amount: double.parse(_amountController.text),
+        date: _selectedDate,
+      );
+
+      widget.onSubmit.execute(updated);
+      Navigator.of(context).pop();
     }
   }
 
@@ -85,52 +96,55 @@ class _TransactionEditSheetState extends State<TransactionEditSheet> {
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          child: Wrap(
+            runSpacing: 16,
             children: [
-              Text('Alterar Transação', style: Theme.of(context).textTheme.titleLarge),
-              TextFormField(
-                initialValue: title,
-                decoration: const InputDecoration(labelText: 'Título'),
-                onChanged: (value) => title = value,
-                validator: (value) =>
-                    (value == null || value.trim().isEmpty) ? 'Insira um título' : null,
+              Text(
+                'Editar Transação',
+                style: Theme.of(context).textTheme.titleLarge,
               ),
               TextFormField(
-                initialValue: amount,
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                controller: _titleController,
+                decoration: const InputDecoration(labelText: 'Título'),
+                validator: (value) =>
+                    value == null || value.trim().isEmpty
+                        ? 'Insira um título válido'
+                        : null,
+              ),
+              TextFormField(
+                controller: _amountController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(labelText: 'Valor'),
-                onChanged: (value) => amount = value,
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) return 'Digite um valor';
-                  final parsed = double.tryParse(value);
-                  if (parsed == null || parsed <= 0) return 'Valor inválido';
-                  return null;
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Insira um valor';
+                  }
+                  final amount = double.tryParse(value);
+                  return (amount == null || amount <= 0)
+                      ? 'Valor inválido'
+                      : null;
                 },
               ),
               Row(
                 children: [
-                  Expanded(
-                    child: Text('Data: ${formatter.format(date!)}'),
-                  ),
+                  Expanded(child: Text('Data: ${formatter.format(_selectedDate)}')),
                   TextButton(
-                    onPressed: _abrirCalendario,
+                    onPressed: _handlePickDate,
                     child: const Text('Selecionar Data'),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: _handleCancel,
                     child: const Text('Cancelar'),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
-                    onPressed: _finalizar,
-                    child: const Text('Salvar'),
+                    onPressed: _handleSubmit,
+                    child: const Text('Concluir'),
                   ),
                 ],
               ),
